@@ -1,0 +1,45 @@
+#!/usr/bin/env python
+
+# coding: utf-8
+import os
+from argparse import ArgumentParser
+
+import cv2
+import matplotlib.pyplot as plt
+
+import modeldata as md
+
+
+def getargs():
+    parser = ArgumentParser(
+        description='Plot an image and corresponding segmentation label')
+    parser.add_argument(
+        'img_path', metavar='IMAGE_PATH', type=str,
+        help='Path to image')
+    parser.add_argument(
+        'label_path', metavar='LABEL_PATH', type=str,
+        help='Path to corresponding label')
+    args = parser.parse_args()
+    return args
+
+
+def plot_img_label(img_path, label_path):
+    assert os.path.exists(img_path)
+    img = cv2.imread(img_path)
+    assert os.path.exists(label_path)
+    label = cv2.imread(label_path, 0)
+    rgb_label = md.convert_idx_to_color(label, md.HERE_CLASSES)
+    fig = plt.figure()
+    p = fig.add_subplot(121)
+    p.set_xticks([]); p.set_yticks([])
+    p.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+    p = fig.add_subplot(122)
+    p.set_xticks([]); p.set_yticks([])
+    p.imshow(cv2.cvtColor(rgb_label, cv2.COLOR_BGR2RGB))
+    plt.show(block=True)
+
+
+
+if __name__ == '__main__':
+    args = getargs()
+    plot_img_label(args.img_path, args.label_path)

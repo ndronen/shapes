@@ -1,0 +1,17 @@
+#!/bin/bash -e
+
+N=1
+MIN_SIZE=20
+MAX_SIZE=200
+MIN_SHAPES=10
+MAX_SHAPES=10
+MAX_SHAPES_OVERLAP=30
+
+
+bin/make-shapes datasets/test-make-shape $N \
+    --fill-is shape --class-is fill --min-size $MIN_SIZE --max-size $MAX_SIZE \
+    --min-shapes $MIN_SHAPES --max-shapes $MAX_SHAPES \
+    --texture-dir data/brodatz/original
+    #--shape-names rectangle \
+    #--instance
+    #--background-texture --shape-names rectangle \

@@ -1,0 +1,88 @@
+#!/bin/bash -e
+
+N=5000
+MIN_SIZE=20
+MAX_SIZE=200
+MIN_SHAPES=10
+MAX_SHAPES=100
+MAX_SHAPES_OVERLAP=30
+
+
+##########################################################################
+# With multiband textures
+##########################################################################
+
+
+bin/make-shapes datasets/texture-brodatz-multiband-random $N \
+    --fill-is random --class-is fill --min-size $MIN_SIZE --max-size $MAX_SIZE \
+    --min-shapes $MIN_SHAPES --max-shapes $MAX_SHAPES \
+    --texture-dir data/brodatz/multiband
+
+bin/make-shapes datasets/texture-brodatz-multiband-colored-shape $N \
+    --fill-is shape --class-is shape --min-size $MIN_SIZE --max-size $MAX_SIZE \
+    --min-shapes $MIN_SHAPES --max-shapes $MAX_SHAPES \
+    --texture-dir data/brodatz/multiband
+
+# And overlap
+bin/make-shapes datasets/texture-brodatz-multiband-random-overlap $N \
+    --fill-is random --class-is fill --min-size $MIN_SIZE --max-size $MAX_SIZE \
+    --min-shapes $MIN_SHAPES --max-shapes $MAX_SHAPES \
+    --texture-dir data/brodatz/multiband --overlap
+
+# And overlap
+bin/make-shapes datasets/texture-brodatz-multiband-shape-overlap $N \
+    --fill-is shape --class-is shape --min-size $MIN_SIZE --max-size $MAX_SIZE \
+    --min-shapes $MIN_SHAPES --max-shapes $MAX_SHAPES \
+    --texture-dir data/brodatz/multiband --overlap
+
+
+##########################################################################
+# With colored textures
+##########################################################################
+
+
+bin/make-shapes datasets/texture-brodatz-colored-random $N \
+    --fill-is random --class-is fill --min-size $MIN_SIZE --max-size $MAX_SIZE \
+    --min-shapes $MIN_SHAPES --max-shapes $MAX_SHAPES \
+    --texture-dir data/brodatz/colored
+
+bin/make-shapes datasets/texture-brodatz-colored-shape $N \
+    --fill-is shape --class-is shape --min-size $MIN_SIZE --max-size $MAX_SIZE \
+    --min-shapes $MIN_SHAPES --max-shapes $MAX_SHAPES \
+    --texture-dir data/brodatz/colored
+
+# And overlap
+bin/make-shapes datasets/texture-brodatz-colored-random-overlap $N \
+    --fill-is random --class-is fill --min-size $MIN_SIZE --max-size $MAX_SIZE \
+    --min-shapes $MIN_SHAPES --max-shapes $MAX_SHAPES \
+    --texture-dir data/brodatz/colored --overlap
+
+# And overlap
+bin/make-shapes datasets/texture-brodatz-colored-shape-overlap $N \
+    --fill-is shape --class-is shape --min-size $MIN_SIZE --max-size $MAX_SIZE \
+    --min-shapes $MIN_SHAPES --max-shapes $MAX_SHAPES \
+    --texture-dir data/brodatz/colored --overlap
+
+
+##########################################################################
+# Without textures (ergo with color)
+##########################################################################
+
+
+bin/make-shapes datasets/color-random $N \
+    --fill-is random --class-is fill --min-size $MIN_SIZE --max-size $MAX_SIZE \
+    --min-shapes $MIN_SHAPES --max-shapes $MAX_SHAPES
+
+bin/make-shapes datasets/color-shape $N \
+    --fill-is shape --class-is shape --min-size $MIN_SIZE --max-size $MAX_SIZE \
+    --min-shapes $MIN_SHAPES --max-shapes $MAX_SHAPES
+
+# And overlap
+bin/make-shapes datasets/color-random-overlap $N \
+    --fill-is random --class-is fill --min-size $MIN_SIZE --max-size $MAX_SIZE \
+    --min-shapes $MIN_SHAPES --max-shapes $MAX_SHAPES_OVERLAP --overlap
+
+# And overlap
+bin/make-shapes datasets/color-shape-overlap $N \
+    --fill-is shape --class-is shape --min-size $MIN_SIZE --max-size $MAX_SIZE \
+    --min-shapes $MIN_SHAPES --max-shapes $MAX_SHAPES_OVERLAP --overlap

@@ -1,0 +1,230 @@
+#!/usr/bin/env python
+
+import os
+from argparse import ArgumentParser
+import warnings
+import multiprocessing as mp
+from functools import partial
+
+import numpy as np
+import skimage
+from skimage.draw._random_shapes import _generate_random_colors
+from skimage.transform import resize
+
+from shapes import random_shapes
+from shapes import instance_random_shapes
+
+
+def getargs():
+    parser = ArgumentParser(
+        description='Make a shape segmentation dataset')
+    parser.add_argument(
+        'output_dir', metavar='OUTPUT_DIR', type=str,
+        help='Directory to which to write dataset')
+    parser.add_argument(
+        'n_examples', metavar='N_EXAMPLES', type=int,
+        help='Number of examples to create')
+    parser.add_argument(
+        '--min-shapes', metavar='MIN_SHAPES', type=int, default=5,
+        help='Minimum number of shapes per image')
+    parser.add_argument(
+        '--max-shapes', metavar='MAX_SHAPES', type=int, default=15,
+        help='Maximum number of shapes per image')
+    parser.add_argument(
+        '--min-size', metavar='MIN_SIZE', type=int, default=10,
+        help='The minimum dimension of each shape to fit into the image.')
+    parser.add_argument(
+        '--max-size', metavar='MAX_SIZE', type=int, default=50,
+        help='The maximum dimension of each shape to fit into the image.')
+    parser.add_argument(
+        '--fill-is', metavar='FILL_IS', type=str, required=True,
+        choices=['shape', 'random'],
+        help='''If "shape", then the fill -- which is either a color or
+        a texture -- is an intrisic, unique property of an object's
+        shape. If "random", then the fill is an accidental property of
+        an object's shape.''')
+    parser.add_argument(
+        '--class-is', metavar='CLASS_IS', type=str, required=False,
+        choices=['shape', 'fill'], default='shape',
+        help='''This argument is only relevant when the fill -- the
+        color or texture -- is an accidental property of shape
+        (i.e. `--fill-is random`). If "shape", then the class of an
+        object is bound to its shape. If "fill", then the class
+        of an object is bound to whatever it is filled by.''')
+
+    parser.add_argument(
+        '--overlap', dest='overlap', action='store_true',
+        help='Allow overlapping shapes (default=no overlap)')
+    parser.add_argument(
+        '--no-overlap', dest='overlap', action='store_false',
+        help='Disallow overlapping shapes (default=no overlap)')
+    parser.set_defaults(overlap=False)
+
+    parser.add_argument(
+        '--texture-dir', metavar='TEXTURE_DIR', type=str,
+        help='Directory of textures to overlay on shapes')
+
+    parser.add_argument(
+        '--background-texture', dest='background_texture',
+        action='store_true',
+        help='Whether to use a background texture or just white')
+    parser.add_argument(
+        '--no-background-texture', dest='background_texture',
+        action='store_false',
+        help='Whether to use a background texture or just white')
+    parser.set_defaults(background_texture=False)
+
+    parser.add_argument(
+        '--instance', dest='instance',
+        action='store_true',
+        help='Do instance segmentation for Tessa')
+    parser.add_argument(
+        '--no-instance', dest='background_texture',
+        action='store_false',
+        help='Do not do instance segmentation for Tessa')
+    parser.set_defaults(instance=False)
+
+    parser.add_argument(
+        '--shape-names', type=str, nargs='+',
+        help='Name(s) of the shapes to use: rectangle, circle, triangle.')
+
+    parser.add_argument(
+        '--seed', metavar='RANDOM_SEED', type=int, default=17,
+        help='Seed for random number generator')
+
+    args = parser.parse_args()
+    return args
+
+
+def make_image_label_pair(index, *, image_dir=None, label_dir=None,
+                          image_shape=None, overlap=False,
+                          random_state=None, min_shapes=None,
+                          max_shapes=None, shape_names=None,
+                          min_size=None, max_size=None,
+                          colors=None, fill_is=None, class_is=None,
+                          num_trials=100, textures=None, seeds=None,
+                          background_texture=None, instance=False):
+
+    random_state = np.random.RandomState(seeds[index-1])
+
+    fun = instance_random_shapes if instance else random_shapes
+
+    print('calling fun', fun)
+
+    image, label, indices = fun(
+        image_shape,
+        min_shapes=min_shapes, max_shapes=max_shapes,
+        min_size=min_size, max_size=max_size,
+        shape_names=shape_names,
+        allow_overlap=overlap, num_trials=num_trials,
+        random_state=random_state, class_is=class_is, fill_is=fill_is,
+        colors=colors, textures=textures,
+        background_texture=background_texture)
+
+    example_name = '{:06d}'.format(index)
+
+    image_path = os.path.join(image_dir, example_name+'.jpg')
+    skimage.io.imsave(image_path, image)
+
+    label_path = os.path.join(label_dir, example_name+'.png')
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore')
+        skimage.io.imsave(label_path, indices)
+
+
+def main(*, output_dir=None, n_examples=None, image_shape=None,
+         random_state=None, overlap=False, min_shapes=None,
+         max_shapes=None, min_size=None, max_size=None,
+         shape_names=None,
+         fill_is=None, class_is=None, colors=None, textures=None,
+         background_texture=None, instance=False):
+
+    label_dir = os.path.join(output_dir, 'labels')
+    image_dir = os.path.join(output_dir, 'images')
+
+    if not os.path.exists(label_dir):
+        os.makedirs(label_dir)
+
+    if not os.path.exists(image_dir):
+        os.makedirs(image_dir)
+
+    indices = tuple(range(n_examples))
+    seeds = random_state.choice(
+        len(indices), size=len(indices), replace=False)
+    pool = mp.Pool()
+    func = partial(
+        make_image_label_pair,
+        image_dir=image_dir,
+        label_dir=label_dir,
+        image_shape=image_shape,
+        overlap=overlap,
+        min_size=min_size,
+        max_size=max_size,
+        shape_names=shape_names,
+        min_shapes=min_shapes,
+        max_shapes=max_shapes,
+        class_is=class_is,
+        fill_is=fill_is,
+        colors=colors,
+        textures=textures,
+        background_texture=background_texture,
+        instance=instance,
+        seeds=seeds,
+        random_state=random_state)
+
+    results = pool.map(func, indices)
+
+
+if __name__ == '__main__':
+    args = getargs()
+    if args.fill_is == 'random':
+        if args.class_is is None:
+            raise ValueError(
+                '"--class-is" is required with "--fill-is random"')
+    random_state = np.random.RandomState(args.seed)
+
+    intensity_range = ((0, 254),)
+    image_shape = (600, 800)
+
+    if args.shape_names is None:
+        shape_names = ('rectangle', 'circle', 'triangle')
+    else:
+        shape_names = args.shape_names
+
+    background_texture = None
+
+    if args.texture_dir is None:
+        colors = _generate_random_colors(
+            255, 3, intensity_range, random_state)
+        textures = None
+        # We only allocate as many colors as there are object types.
+        # There are only three types of objects (rectangle, triangle,
+        # and circle).
+    else:
+        colors = None
+        texture_paths = [
+                os.path.join(args.texture_dir, p)
+                for p in os.listdir(args.texture_dir)]
+        #n_textures = len(shape_names) + int(args.background_texture)
+        n_textures = len(texture_paths)
+        texture_paths = random_state.choice(texture_paths, size=n_textures)
+        textures = []
+        for texture_path in texture_paths:
+            texture = skimage.io.imread(texture_path)
+            # Hard-coded constant 3 meaning bi-cubic.
+            texture = resize(texture, image_shape, order=3)
+            texture = (texture*255).astype(np.uint8)
+            textures.append(texture)
+
+        if args.background_texture:
+            background_texture = textures.pop()
+
+    main(output_dir=args.output_dir, n_examples=args.n_examples,
+         image_shape=image_shape, random_state=random_state,
+         overlap=args.overlap,
+         min_size=args.min_size, max_size=args.max_size,
+         shape_names=args.shape_names,
+         min_shapes=args.min_shapes, max_shapes=args.max_shapes,
+         fill_is=args.fill_is, colors=colors, class_is=args.class_is,
+         textures=textures, background_texture=background_texture,
+         instance=args.instance)
